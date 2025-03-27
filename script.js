@@ -17,7 +17,6 @@ let originalDeckCount = 0;
 let currentRound = 1;
 let totalRounds = 6;
 
-
 const playerHandDiv = document.getElementById('player-hand');
 const aiHandDiv = document.getElementById('ai-hand');
 const tablePileDiv = document.getElementById('table-pile');
@@ -36,7 +35,34 @@ const gameOverTitle = document.getElementById('game-over-title');
 const gameOverMessage = document.getElementById('game-over-message');
 const restartBtn = document.getElementById('restart-btn');
 
-restartBtn.addEventListener('click', () => startGame(6));
+restartBtn.addEventListener('click', () => {
+    // Hide game over screen
+    gameOverScreen.classList.add('hidden');
+
+    // Show splash screen
+    document.getElementById('splash-screen').classList.remove('hidden');
+
+    // Hide all game parts so it looks clean
+    document.getElementById('ai-hand').classList.add('hidden');
+    document.getElementById('player-hand').classList.add('hidden');
+    document.getElementById('table-area').classList.add('hidden');
+    document.getElementById('player-score').classList.add('hidden');
+    document.getElementById('ai-score').classList.add('hidden');
+
+    // Reset score display
+    playerScoreDisplay.textContent = '0';
+    aiScoreDisplay.textContent = '0';
+    potCountDisplay.textContent = '0';
+
+    // Clear messages and visuals
+    playerMessage.textContent = '';
+    aiMessage.textContent = '';
+    playerWonCardsDiv.innerHTML = '';
+    aiWonCardsDiv.innerHTML = '';
+    tablePileDiv.innerHTML = '';
+    document.getElementById('player-pisti-cards').innerHTML = '';
+    document.getElementById('ai-pisti-cards').innerHTML = '';
+});
 startBtn.addEventListener('click', () => startGame(6));
 
 // Create a fresh deck
@@ -174,13 +200,13 @@ function animateDeal() {
     }, playerHand.length * 150 + 700);
 }
 
-
 // Update game display
 function updateDisplay() {
     const roundCountDisplay = document.getElementById('round-count');
     const totalRoundsDisplay = document.getElementById('total-rounds');
-    roundCountDisplay.textContent = currentRound;
+    roundCountDisplay.textContent = Math.min(currentRound, totalRounds);
     totalRoundsDisplay.textContent = totalRounds;
+    
 
     tablePileDiv.innerHTML = '';
     if (tablePile.length > 0) {
@@ -211,7 +237,6 @@ function updateDisplay() {
     }
 
     potCountDisplay.textContent = tablePile.length;
-
     playerScoreDisplay.textContent = playerScore;
     aiScoreDisplay.textContent = aiScore;
 
@@ -236,8 +261,6 @@ function updateDisplay() {
     updateWonCards(playerWonCardsDiv, playerWonCards);
     updateWonCards(aiWonCardsDiv, aiWonCards);
 }
-
-
 
 // Update won cards pile
 function updateWonCards(container, count) {
@@ -277,8 +300,7 @@ function playCard(card) {
         if (isJack || (topCard && getRank(topCard) === getRank(card))) {
             if (tablePile.length === 2 && !isJack) {
                 playerScore += 10;
-                playerMessage.textContent = 'Pisti! +10 points';
-                setTimeout(() => { playerMessage.textContent = ''; }, 2000);
+                showMessage(playerMessage, 'Pisti! +10 points', '⭐', true);
                 isPisti = true;
                 playerPistiCount++;
                 updatePistiCards('player-pisti-cards', playerPistiCount, card);
@@ -298,8 +320,7 @@ function playCard(card) {
                 playerScore += tablePile.length;
                 playerWonCards += tablePile.length;
                 isPisti = false;
-                playerMessage.textContent = isJack ? 'Jack wins all!' : '';
-                setTimeout(() => { playerMessage.textContent = ''; }, 2000);
+                showMessage(playerMessage, isJack ? 'Jack wins all!' : 'Cards captured!', '✋', false);
                 animateCapture('capture-to-player', () => {
                     tablePile = [];
                     updateDisplay();
@@ -315,24 +336,36 @@ function playCard(card) {
                 aiTurn();
             }, 800);
         }
-
-        checkGameEnd();
     });
 
     playerHandDiv.removeChild(cardElement);
 }
 
-
+// Helper function to show messages with animation
+function showMessage(element, text, icon = '', highlight = false) {
+    element.innerHTML = icon ? `${icon} ${text}` : text;
+    element.classList.add('active');
+    if (highlight) {
+        element.classList.add('highlight');
+    }
+    setTimeout(() => {
+        element.classList.remove('active', 'highlight');
+        element.innerHTML = '';
+    }, 2000);
+}
 
 // AI's turn
 function aiTurn() {
+    console.log(`[aiTurn] Start: aiHand.length=${aiHand.length}, playerHand.length=${playerHand.length}, deck.length=${deck.length}, tablePile.length=${tablePile.length}`);
+
+    if (aiHand.length === 0) {
+        console.log("[aiTurn] AI has no cards, calling checkDealMoreCards");
+        checkDealMoreCards();
+        return; // Let checkDealMoreCards handle the end
+    }
+
     const card = aiHand[0];
     const cardElement = aiHandDiv.querySelector(`[data-index="0"]`);
-    if (aiHand.length === 0) {
-        checkDealMoreCards();
-        checkGameEnd();
-        return;
-    }
 
     if (tablePile.length === 0) {
         const nonJackIndex = aiHand.findIndex(c => !c.startsWith("jack_of_"));
@@ -343,64 +376,79 @@ function aiTurn() {
     }
 
     aiHand.shift();
+    console.log(`[aiTurn] After shift: aiHand.length=${aiHand.length}, playerHand.length=${playerHand.length}, deck.length=${deck.length}`);
+
+    // Check if this is the last card of the game
+    const isLastCardOfGame = deck.length === 0 && playerHand.length === 0 && aiHand.length === 0;
 
     animatePlay(cardElement, 'ai-play-to-table', true, () => {
         const topCard = tablePile.length > 0 ? tablePile[tablePile.length - 1] : null;
-        tablePile.push(card);
         const getRank = (cardStr) => cardStr.split('_of_')[0];
         const isJack = getRank(card) === 'jack';
+
+        tablePile.push(card);
+        updateDisplay();
+        console.log(`[aiTurn] After play: aiHand.length=${aiHand.length}, playerHand.length=${playerHand.length}, deck.length=${deck.length}, tablePile.length=${tablePile.length}`);
 
         if (isJack || (topCard && getRank(topCard) === getRank(card))) {
             if (tablePile.length === 2 && !isJack) {
                 aiScore += 10;
-                aiMessage.textContent = 'AI Pisti! +10 points';
-                setTimeout(() => { aiMessage.textContent = ''; }, 2000);
+                showMessage(aiMessage, 'AI Pisti! +10 points', '⭐', true);
                 isPisti = true;
                 aiPistiCount++;
                 updatePistiCards('ai-pisti-cards', aiPistiCount, card);
-                updateDisplay();
                 setTimeout(() => {
                     animateCapture('capture-to-ai', () => {
-                        aiScore += tablePile.length;
                         aiWonCards += tablePile.length;
                         tablePile = [];
                         isPisti = false;
                         updateDisplay();
-                        checkDealMoreCards();
-                        checkGameEnd();
-                        playerCanPlay = true;
-                        updateTurnIndicator(true);
+                        console.log(`[aiTurn] After Pisti capture: aiHand.length=${aiHand.length}, playerHand.length=${playerHand.length}, deck.length=${deck.length}`);
+                        if (isLastCardOfGame) {
+                            console.log("[aiTurn] Last card captured (Pisti), ending game");
+                            checkGameEnd();
+                        } else {
+                            checkDealMoreCards();
+                            playerCanPlay = true;
+                            updateTurnIndicator(true);
+                        }
                     });
                 }, 1000);
             } else {
                 aiScore += tablePile.length;
                 aiWonCards += tablePile.length;
                 isPisti = false;
-                aiMessage.textContent = isJack ? 'AI Jack wins all!' : '';
-                setTimeout(() => { aiMessage.textContent = ''; }, 2000);
+                showMessage(aiMessage, isJack ? 'AI Jack wins all!' : 'Cards captured!', '✋', false);
                 animateCapture('capture-to-ai', () => {
                     tablePile = [];
                     updateDisplay();
-                    checkDealMoreCards();
-                    checkGameEnd();
-                    playerCanPlay = true;
-                    updateTurnIndicator(true);
+                    console.log(`[aiTurn] After capture: aiHand.length=${aiHand.length}, playerHand.length=${playerHand.length}, deck.length=${deck.length}`);
+                    if (isLastCardOfGame) {
+                        console.log("[aiTurn] Last card captured, ending game");
+                        checkGameEnd();
+                    } else {
+                        checkDealMoreCards();
+                        playerCanPlay = true;
+                        updateTurnIndicator(true);
+                    }
                 });
             }
         } else {
             isPisti = false;
             updateDisplay();
-            checkDealMoreCards();
-            checkGameEnd();
-            playerCanPlay = true;
-            updateTurnIndicator(true);
+            if (isLastCardOfGame) {
+                console.log("[aiTurn] Last card played (no capture), ending game");
+                checkGameEnd();
+            } else {
+                checkDealMoreCards();
+                playerCanPlay = true;
+                updateTurnIndicator(true);
+            }
         }
     }, card);
 
     if (cardElement) aiHandDiv.removeChild(cardElement);
 }
-
-
 
 // Animate card play
 function animatePlay(cardElement, animationClass, isAI, callback, cardName = null) {
@@ -413,7 +461,6 @@ function animatePlay(cardElement, animationClass, isAI, callback, cardName = nul
     clone.className = `animated-card ${animationClass}`;
     if (isAI) {
         clone.style.backgroundImage = `url('images/cards/back.png')`;
-
         setTimeout(() => {
             clone.style.backgroundImage = `url('images/cards/${cardName}.png')`;
         }, 250);
@@ -449,26 +496,64 @@ function dealMoreCards() {
     animateDeal();
 }
 
+// Check if more cards need to be dealt or if the round/game ends
+function checkDealMoreCards() {
+    console.log(`[checkDealMoreCards] Start: playerHand.length=${playerHand.length}, aiHand.length=${aiHand.length}, deck.length=${deck.length}, tablePile.length=${tablePile.length}, currentRound=${currentRound}, totalRounds=${totalRounds}`);
+    
+    if (playerHand.length === 0 && aiHand.length === 0) {
+        if (deck.length > 0 && currentRound < totalRounds) {
+            console.log("[checkDealMoreCards] Dealing more cards");
+            currentRound++;
+            dealMoreCards();
+        } else {
+            console.log("[checkDealMoreCards] No more cards to deal, calling checkGameEnd");
+            checkGameEnd();
+        }
+    }
+}
+
 // Check if game is over
 function checkGameEnd() {
-    if ((deck.length === 0 && playerHand.length === 0 && aiHand.length === 0) ||
-        (currentRound >= totalRounds && deck.length === 0)) {
-        playerScore = 0;
-        aiScore = 0;
-        playerWonCards = 0;
-        aiWonCards = 0;
-        playerPistiCount = 0;
-        aiPistiCount = 0;
-        currentRound = 1;
-        playerHand = [];
-        aiHand = [];
-        tablePile = [];
-        deck = [];
-        playerCanPlay = true;
+    console.log(`[checkGameEnd] Checking: deck.length=${deck.length}, playerHand.length=${playerHand.length}, aiHand.length=${aiHand.length}, tablePile.length=${tablePile.length}`);
+    
+    if ((deck.length === 0 || currentRound >= totalRounds) && playerHand.length === 0 && aiHand.length === 0) {
+        // Award remaining table cards to the last capturer
+        if (tablePile.length > 0) {
+            if (currentRound >= totalRounds) {
+                // Last round and no cards in hand — discard remaining pile
+                console.log("[checkGameEnd] Last round over, discarding remaining table cards.");
+            } else if (playerCanPlay) {
+                console.log("[checkGameEnd] Awarding remaining table cards to AI (last capturer)");
+                aiWonCards += tablePile.length;
+                aiScore += tablePile.length;
+            } else {
+                console.log("[checkGameEnd] Awarding remaining table cards to Player (last capturer)");
+                playerWonCards += tablePile.length;
+                playerScore += tablePile.length;
+            }
+            tablePile = [];
+            updateDisplay();
+        }
+        
 
-        gameContainer.style.display = 'none';
-        document.getElementById('splash-screen').classList.remove('hidden');
-        gameOverScreen.classList.add('hidden');
+        console.log("[checkGameEnd] Game over condition met, showing winner screen");
+        gameOverScreen.classList.remove('hidden');
+        document.getElementById('ai-hand').classList.add('hidden');
+        document.getElementById('player-hand').classList.add('hidden');
+        document.getElementById('table-area').classList.add('hidden');
+        document.getElementById('player-score').classList.add('hidden');
+        document.getElementBy
+        
+
+        const winner = playerScore > aiScore ? 'Player' : (aiScore > playerScore ? 'AI' : 'Tie');
+        gameOverTitle.textContent = winner === 'Tie' ? 'Game Over - Tie!' : `${winner} Wins!`;
+        gameOverMessage.textContent = `Player: ${playerScore} | AI: ${aiScore}\nPlayer Pisti: ${playerPistiCount} | AI Pisti: ${aiPistiCount}`;
+        
+        // Disable further play
+        playerCanPlay = false;
+        updateTurnIndicator(false); // Turn off both indicators
+    } else {
+        console.log("[checkGameEnd] Game not over yet");
     }
 }
 
@@ -489,6 +574,13 @@ function startGame(rounds = 6) {
     aiMessage.textContent = '';
     updateTurnIndicator(true);
 
+    // Restore all hidden sections
+    document.getElementById('ai-hand').classList.remove('hidden');
+    document.getElementById('player-hand').classList.remove('hidden');
+    document.getElementById('table-area').classList.remove('hidden');
+    document.getElementById('player-score').classList.remove('hidden');
+    document.getElementById('ai-score').classList.remove('hidden');
+
     gameOverScreen.classList.add('hidden');
     const splashScreen = document.getElementById('splash-screen');
     splashScreen.classList.add('hidden');
@@ -496,6 +588,7 @@ function startGame(rounds = 6) {
 }
 
 
+// Update turn indicator
 function updateTurnIndicator(isPlayerTurn) {
     const playerIndicator = document.getElementById('player-turn-indicator');
     const aiIndicator = document.getElementById('ai-turn-indicator');
@@ -509,33 +602,21 @@ function updateTurnIndicator(isPlayerTurn) {
     }
 }
 
+// Update pisti cards display
 function updatePistiCards(containerId, count, lastCard) {
     const container = document.getElementById(containerId);
     container.innerHTML = '';
     for (let i = 0; i < count; i++) {
         const cardEl = document.createElement('div');
         cardEl.className = 'pisti-won-card';
-
         cardEl.style.backgroundImage = (i === count - 1 && lastCard)
             ? `url('images/cards/${lastCard}.png')`
             : `url('images/cards/back.png')`;
-
         const offsetX = i * 5;
         const offsetY = 0;
         const rotation = i * 2;
         cardEl.style.transform = `translate(${offsetX}px, ${offsetY}px) rotate(${rotation}deg)`;
         cardEl.style.zIndex = i;
         container.appendChild(cardEl);
-    }
-}
-
-function checkDealMoreCards() {
-    if (playerHand.length === 0 && aiHand.length === 0) {
-        if (deck.length > 0) {
-            currentRound++;
-            dealMoreCards();
-        } else {
-            checkGameEnd();
-        }
     }
 }
