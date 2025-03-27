@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pisti - Mobile Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div id="game-container">
+        <div id="ai-score" class="score">
+            AI: <span id="ai-score-value">0</span>
+            <div id="ai-won-cards" class="won-cards"></div>
+            <div id="ai-turn-indicator" class="turn-indicator">Opponent's Turn</div>
+            <div id="ai-pisti-cards" class="won-cards"></div>
+        </div>
+
+        <div id="ai-message" class="message"></div>
+        <div id="ai-hand" class="hand"></div>
+
+        <div id="table-area">
+            <div id="table-pile" class="card-pile"></div>
+            <div id="pot-value">Pot: <span id="pot-count">0</span></div>
+            <div id="round-indicator">Round: <span id="round-count">1</span>/<span id="total-rounds">6</span></div>
+        </div>
+        <div id="player-hand" class="hand"></div>
+        <div id="player-message" class="message"></div>
+        <div id="player-score" class="score">
+            Player: <span id="player-score-value">0</span>
+            <div id="player-won-cards" class="won-cards"></div>
+            <div id="player-turn-indicator" class="turn-indicator">Your Turn</div>
+            <div id="player-pisti-cards" class="won-cards"></div>
+        </div>
+
+        <div id="game-over" class="overlay hidden">
+            <div class="game-over-content">
+                <h2 id="game-over-title">Game Over</h2>
+                <p id="game-over-message"></p>
+                <button id="restart-btn">Play Again</button>
+            </div>
+        </div>
+        <!-- Splash screen -->
+        <div id="splash-screen" class="overlay">
+            <div class="game-over-content">
+                <h2 style="margin-bottom: 20px;">Welcome to Pişti</h2>
+                <p>Choose number of rounds:</p>
+                <div class="round-options">
+                    <button onclick="startGame(6)">6 Rounds</button>
+                    <button onclick="startGame(8)">8 Rounds</button>
+                    <button onclick="startGame(10)">10 Rounds</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>
